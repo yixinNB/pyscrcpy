@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "scrcpy-client"
-version = "0.3.4"
-description = "A client of scrcpy"
-authors = ["lengyue <lengyue@lengyue.me>"]
+name = "scrcpy"
+version = "0.0.1"
+description = "A python client for scrcpy, i.e. see & control your android device over adb."
+authors = ["lengyue <lengyue@lengyue.me>", "S1M0N38 <bertolottosimone@gmail.com>"]
 readme = "README.md"
-repository = "https://github.com/leng-yue/py-scrcpy-client"
+repository = "https://github.com/S1M0N38/scrcpy"
 license = "MIT"
 
 [tool.poetry.dependencies]
