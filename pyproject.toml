@@ -13,18 +13,6 @@ av = "^8.0.3"
 adbutils = "^0.11.0"
 numpy = "^1.21.4"
 
-[tool.poetry.dev-dependencies]
-flake8 = "*"
-isort = "*"
-black = {version = "*", allow-prereleases = true}
-pytest = "^6.2.4"
-pytest-cov = "^2.12.1"
-Sphinx = "^4.1.2"
-myst-parser = "^0.15.1"
-
-[tool.isort]
-profile = "black"
-
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
