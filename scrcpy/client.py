@@ -7,11 +7,15 @@ from time import sleep
 from typing import Any, Callable, Optional, Tuple, Union
 
 import numpy as np
+import numpy.typing as npt
+
 from adbutils import AdbDevice, AdbError, Network, _AdbStreamConnection, adb
 from av.codec import CodecContext
 
 from .const import EVENT_FRAME, EVENT_INIT, LOCK_SCREEN_ORIENTATION_UNLOCKED
 from .control import ControlSender
+
+Frame = npt.NDArray[np.int8]
 
 VERSION = "1.20"
 HERE = Path(__file__).resolve().parent
@@ -150,7 +154,8 @@ class Client:
         self.__deploy_server()
         self.__init_server_connection()
         self.alive = True
-        self.__send_to_listeners(EVENT_INIT)
+        for func in self.listeners[EVENT_INIT]:
+            func(self)
 
         if threaded:
             threading.Thread(target=self.__stream_loop).start()
@@ -176,51 +181,48 @@ class Client:
         codec = CodecContext.create("h264", "r")
         while self.alive:
             try:
-                raw_h264 = self.__video_socket.recv(0x10000)
-                packets = codec.parse(raw_h264)
-                for packet in packets:
-                    frames = codec.decode(packet)
-                    for frame in frames:
+                raw = self.__video_socket.recv(0x10000)
+                for packet in codec.parse(raw):
+                    for frame in codec.decode(packet):
                         frame = frame.to_ndarray(format="bgr24")
                         self.last_frame = frame
                         self.resolution = (frame.shape[1], frame.shape[0])
-                        self.__send_to_listeners(EVENT_FRAME, frame)
+                        for func in self.listeners[EVENT_FRAME]:
+                            func(self, frame)
             except BlockingIOError:
                 time.sleep(0.01)
                 if not self.block_frame:
-                    self.__send_to_listeners(EVENT_FRAME, None)
-            except OSError as e:  # Socket Closed
+                    for func in self.listeners[EVENT_FRAME]:
+                        func(self, None)
+            except OSError as e:
                 if self.alive:
                     raise e
 
-    def add_listener(self, cls: str, listener: Callable[..., Any]) -> None:
+    def on_init(self, func: Callable[[Client], None]) -> None:
         """
-        Add a video listener
+        Add funtion to on-init listeners.
+        Your function is run after client.start() is called.
 
         Args:
-            cls: Listener category, support: init, frame
-            listener: A function to receive frame np.ndarray
-        """
-        self.listeners[cls].append(listener)
+            func: callback to be called after the server starts.
 
-    def remove_listener(self, cls: str, listener: Callable[..., Any]) -> None:
-        """
-        Remove a video listener
+        Returns:
+            The list of on-init callbacks.
 
-        Args:
-            cls: Listener category, support: init, frame
-            listener: A function to receive frame np.ndarray
         """
-        self.listeners[cls].remove(listener)
+        self.listeners[EVENT_INIT].append(func)
+        return self.listeners[EVENT_INIT]
 
-    def __send_to_listeners(self, cls: str, *args, **kwargs) -> None:
+    def on_frame(self, func: Callable[[Client, Frame], None]):
         """
-        Send event to listeners
+        Add functoin to on-frame listeners.
+        Your function will be run on every valid frame recived.
 
         Args:
-            cls: Listener type
-            *args: Other arguments
-            *kwargs: Other arguments
+            func: callback to be called on every frame.
+
+        Returns:
+            The list of on-frame callbacks.
         """
-        for fun in self.listeners[cls]:
-            fun(*args, **kwargs)
+        self.listeners[EVENT_FRAME].append(func)
+        return self.listeners[EVENT_FRAME]
