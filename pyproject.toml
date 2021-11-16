@@ -11,6 +11,7 @@ license = "MIT"
 python = ">=3.7,<3.10"
 av = "^8.0.3"
 adbutils = "^0.11.0"
+numpy = "^1.21.4"
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"
