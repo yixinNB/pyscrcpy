@@ -10,8 +10,8 @@ import numpy as np
 from adbutils import AdbDevice, AdbError, Network, _AdbStreamConnection, adb
 from av.codec import CodecContext
 
-from const import EVENT_FRAME, EVENT_INIT, LOCK_SCREEN_ORIENTATION_UNLOCKED
-from control import ControlSender
+from .const import EVENT_FRAME, EVENT_INIT, LOCK_SCREEN_ORIENTATION_UNLOCKED
+from .control import ControlSender
 
 VERSION = "1.20"
 HERE = Path(__file__).resolve().parent

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scrcpy"
-version = "0.0.1"
+version = "0.0.3"
 description = "A python client for scrcpy, i.e. see & control your android device over adb."
 authors = ["lengyue <lengyue@lengyue.me>", "S1M0N38 <bertolottosimone@gmail.com>"]
 readme = "README.md"
