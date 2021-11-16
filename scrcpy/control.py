@@ -3,8 +3,7 @@ import socket
 import struct
 from time import sleep
 
-import scrcpy
-from scrcpy import const
+import const
 
 
 def inject(control_type: int):
@@ -61,7 +60,11 @@ class ControlSender:
 
     @inject(const.TYPE_INJECT_TOUCH_EVENT)
     def touch(
-        self, x: int, y: int, action: int = const.ACTION_DOWN, touch_id: int = -1
+        self,
+        x: int,
+        y: int,
+        action: int = const.ACTION_DOWN,
+        touch_id: int = -1,
     ) -> bytes:
         """
         Touch screen
@@ -178,7 +181,9 @@ class ControlSender:
         return struct.pack(">?i", paste, len(buffer)) + buffer
 
     @inject(const.TYPE_SET_SCREEN_POWER_MODE)
-    def set_screen_power_mode(self, mode: int = scrcpy.POWER_MODE_NORMAL) -> bytes:
+    def set_screen_power_mode(
+        self, mode: int = const.POWER_MODE_NORMAL
+    ) -> bytes:
         """
         Set screen power mode
 

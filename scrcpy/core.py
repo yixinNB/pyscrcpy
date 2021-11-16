@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import socket
 import struct
 import threading
@@ -10,15 +10,19 @@ import numpy as np
 from adbutils import AdbDevice, AdbError, Network, _AdbStreamConnection, adb
 from av.codec import CodecContext
 
-from .const import EVENT_FRAME, EVENT_INIT, LOCK_SCREEN_ORIENTATION_UNLOCKED
-from .control import ControlSender
+from const import EVENT_FRAME, EVENT_INIT, LOCK_SCREEN_ORIENTATION_UNLOCKED
+from control import ControlSender
+
+VERSION = "1.20"
+HERE = Path(__file__).resolve().parent
+JAR = HERE / f"scrcpy-server.jar"
 
 
 class Client:
     def __init__(
         self,
         device: Optional[Union[AdbDevice, str]] = None,
-        max_width: int = 0,
+        max_size: int = 0,
         bitrate: int = 8000000,
         max_fps: int = 0,
         block_frame: bool = False,
@@ -26,11 +30,12 @@ class Client:
         lock_screen_orientation: int = LOCK_SCREEN_ORIENTATION_UNLOCKED,
     ):
         """
-        Create a scrcpy client, this client won't be started until you call the start function
+        Create a scrcpy client.
+        This client won't be started until you call .start()
 
         Args:
             device: Android device, select first one if none, from serial if str
-            max_width: frame width that will be broadcast from android server
+            max_size: frame width that will be broadcast from android server
             bitrate: bitrate
             max_fps: maximum fps, 0 means not limited (supported after android 10)
             block_frame: only return nonempty frames, may block cv2 render thread
@@ -53,7 +58,7 @@ class Client:
         self.control = ControlSender(self)
 
         # Params
-        self.max_width = max_width
+        self.max_size = max_size
         self.bitrate = bitrate
         self.max_fps = max_fps
         self.block_frame = block_frame
@@ -69,8 +74,9 @@ class Client:
 
     def __init_server_connection(self) -> None:
         """
-        Connect to android server, there will be two sockets, video and control socket.
-        This method will set: video_socket, control_socket, resolution variables
+        Connect to android server, there will be two sockets, video and control
+        socket. This method will set: video_socket, control_socket, resolution
+        variables
         """
         for _ in range(30):
             try:
@@ -82,7 +88,9 @@ class Client:
                 sleep(0.1)
                 pass
         else:
-            raise ConnectionError("Failed to connect scrcpy-server after 3 seconds")
+            raise ConnectionError(
+                "Failed to connect scrcpy-server after 3 seconds"
+            )
 
         dummy_byte = self.__video_socket.recv(1)
         if not len(dummy_byte):
@@ -91,7 +99,9 @@ class Client:
         self.control_socket = self.device.create_connection(
             Network.LOCAL_ABSTRACT, "scrcpy"
         )
-        self.device_name = self.__video_socket.recv(64).decode("utf-8").rstrip("\x00")
+        self.device_name = (
+            self.__video_socket.recv(64).decode("utf-8").rstrip("\x00")
+        )
         if not len(self.device_name):
             raise ConnectionError("Did not receive Device Name!")
 
@@ -103,34 +113,30 @@ class Client:
         """
         Deploy server to android device
         """
-        server_root = os.path.abspath(os.path.dirname(__file__))
-        server_file_path = server_root + "/scrcpy-server.jar"
-        self.device.push(server_file_path, "/data/local/tmp/")
-        self.__server_stream = self.device.shell(
-            [
-                "CLASSPATH=/data/local/tmp/scrcpy-server.jar",
-                "app_process",
-                "/",
-                "com.genymobile.scrcpy.Server",
-                "1.18",  # Scrcpy server version
-                "info",  # Log level: info, verbose...
-                f"{self.max_width}",  # Max screen width (long side)
-                f"{self.bitrate}",  # Bitrate of video
-                f"{self.max_fps}",  # Max frame per second
-                f"{self.lock_screen_orientation}",  # Lock screen orientation: LOCK_SCREEN_ORIENTATION
-                "true",  # Tunnel forward
-                "-",  # Crop screen
-                "false",  # Send frame rate to client
-                "true",  # Control enabled
-                "0",  # Display id
-                "false",  # Show touches
-                "true" if self.stay_awake else "false",  # Stay awake
-                "-",  # Codec (video encoding) options
-                "-",  # Encoder name
-                "false",  # Power off screen after server closed
-            ],
-            stream=True,
-        )
+        cmd = [
+            "CLASSPATH=/data/local/tmp/scrcpy-server.jar",
+            "app_process",
+            "/",
+            "com.genymobile.scrcpy.Server",
+            VERSION,  # Scrcpy server version
+            "info",  # Log level: info, verbose...
+            f"{self.max_size}",  # Max screen width (long side)
+            f"{self.bitrate}",  # Bitrate of video
+            f"{self.max_fps}",  # Max frame per second
+            f"{self.lock_screen_orientation}",  # Lock screen orientation: LOCK_SCREEN_ORIENTATION
+            "true",  # Tunnel forward
+            "-",  # Crop screen
+            "false",  # Send frame rate to client
+            "true",  # Control enabled
+            "0",  # Display id
+            "false",  # Show touches
+            "true" if self.stay_awake else "false",  # Stay awake
+            "-",  # Codec (video encoding) options
+            "-",  # Encoder name
+            "false",  # Power off screen after server closed
+        ]
+        self.device.push(JAR, "/data/local/tmp/")
+        self.__server_stream = self.device.shell(cmd, stream=True)
 
     def start(self, threaded: bool = False) -> None:
         """
