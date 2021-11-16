@@ -13,6 +13,9 @@ av = "^8.0.3"
 adbutils = "^0.11.0"
 numpy = "^1.21.4"
 
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
 [tool.black]
 line-length = 79
 

@@ -1,2 +1,2 @@
-from .consts import *
+from .const import *
 from .client import Client

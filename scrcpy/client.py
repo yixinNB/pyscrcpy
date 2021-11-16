@@ -1,3 +1,4 @@
+import abc
 from pathlib import Path
 import socket
 import struct
@@ -20,6 +21,13 @@ Frame = npt.NDArray[np.int8]
 VERSION = "1.20"
 HERE = Path(__file__).resolve().parent
 JAR = HERE / f"scrcpy-server.jar"
+
+
+class ClientBase(abc.ABC):
+    @abc.abstractmethod
+    def __stream_loop(self) -> None:
+        """Loop that handle data return from server."""
+        pass
 
 
 class Client:
@@ -198,7 +206,7 @@ class Client:
                 if self.alive:
                     raise e
 
-    def on_init(self, func: Callable[[Client], None]) -> None:
+    def on_init(self, func: Callable[[ClientBase], None]) -> None:
         """
         Add funtion to on-init listeners.
         Your function is run after client.start() is called.
@@ -213,7 +221,7 @@ class Client:
         self.listeners[EVENT_INIT].append(func)
         return self.listeners[EVENT_INIT]
 
-    def on_frame(self, func: Callable[[Client, Frame], None]):
+    def on_frame(self, func: Callable[[ClientBase, Frame], None]):
         """
         Add functoin to on-frame listeners.
         Your function will be run on every valid frame recived.
