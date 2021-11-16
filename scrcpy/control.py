@@ -3,7 +3,7 @@ import socket
 import struct
 from time import sleep
 
-from . import const
+from . import consts
 
 
 def inject(control_type: int):
