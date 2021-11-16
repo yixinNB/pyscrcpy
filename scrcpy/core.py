@@ -6,7 +6,6 @@ import time
 from time import sleep
 from typing import Any, Callable, Optional, Tuple, Union
 
-import cv2
 import numpy as np
 from adbutils import AdbDevice, AdbError, Network, _AdbStreamConnection, adb
 from av.codec import CodecContext
@@ -22,7 +21,6 @@ class Client:
         max_width: int = 0,
         bitrate: int = 8000000,
         max_fps: int = 0,
-        flip: bool = False,
         block_frame: bool = False,
         stay_awake: bool = False,
         lock_screen_orientation: int = LOCK_SCREEN_ORIENTATION_UNLOCKED,
@@ -35,7 +33,6 @@ class Client:
             max_width: frame width that will be broadcast from android server
             bitrate: bitrate
             max_fps: maximum fps, 0 means not limited (supported after android 10)
-            flip: flip the video
             block_frame: only return nonempty frames, may block cv2 render thread
             stay_awake: keep Android device awake
             lock_screen_orientation: lock screen orientation, LOCK_SCREEN_ORIENTATION_*
@@ -56,7 +53,6 @@ class Client:
         self.control = ControlSender(self)
 
         # Params
-        self.flip = flip
         self.max_width = max_width
         self.bitrate = bitrate
         self.max_fps = max_fps
@@ -180,8 +176,6 @@ class Client:
                     frames = codec.decode(packet)
                     for frame in frames:
                         frame = frame.to_ndarray(format="bgr24")
-                        if self.flip:
-                            frame = cv2.flip(frame, 1)
                         self.last_frame = frame
                         self.resolution = (frame.shape[1], frame.shape[0])
                         self.__send_to_listeners(EVENT_FRAME, frame)

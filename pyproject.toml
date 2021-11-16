@@ -7,8 +7,8 @@ readme = "README.md"
 repository = "https://github.com/leng-yue/py-scrcpy-client"
 license = "MIT"
 packages = [
-    { include = "scrcpy" },
-    { include = "scrcpy_ui" },
+{ include = "scrcpy" },
+{ include = "scrcpy_ui" },
 ]
 
 [tool.poetry.scripts]
@@ -17,7 +17,6 @@ py-scrcpy = "scrcpy_ui:main"
 [tool.poetry.dependencies]
 python = ">=3.7,<3.10"
 av = "^8.0.3"
-opencv-python = "^4.5.3"
 adbutils = "^0.11.0"
 
 # Optional dependencies for ui
