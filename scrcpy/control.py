@@ -1,7 +1,7 @@
 import functools
 import socket
 import struct
-from time import sleep
+import time
 
 from . import const
 
@@ -73,7 +73,8 @@ class ControlSender:
             x: horizontal position
             y: vertical position
             action: ACTION_DOWN | ACTION_UP | ACTION_MOVE
-            touch_id: Default using virtual id -1, you can specify it to emulate multi finger touch
+            touch_id: Default using virtual id -1, you can specify it to
+                emulate multi finger touch
         """
         x, y = max(x, 0), max(y, 0)
         return struct.pack(
@@ -146,7 +147,8 @@ class ControlSender:
         """
         Get clipboard
         """
-        # Since this function need socket response, we can't auto inject it any more
+        # Since this function need socket response,
+        # we can't auto inject it any more
         s: socket.socket = self.parent.control_socket
 
         with self.parent.control_socket_lock:
@@ -257,4 +259,4 @@ class ControlSender:
             if next_x == end_x and next_y == end_y:
                 self.touch(next_x, next_y, const.ACTION_UP)
                 break
-            sleep(move_steps_delay)
+            time.sleep(move_steps_delay)
