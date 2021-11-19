@@ -23,13 +23,6 @@ HERE = Path(__file__).resolve().parent
 JAR = HERE / f"scrcpy-server.jar"
 
 
-class ClientBase(abc.ABC):
-    @abc.abstractmethod
-    def __stream_loop(self) -> None:
-        """Loop that handle data return from server."""
-        pass
-
-
 class Client:
     def __init__(
         self,
@@ -46,13 +39,24 @@ class Client:
         This client won't be started until you call .start()
 
         Args:
-            device: Android device, select first one if none, from serial if str
-            max_size: frame width that will be broadcast from android server
-            bitrate: bitrate
-            max_fps: maximum fps, 0 means not limited (supported after android 10)
-            block_frame: only return nonempty frames, may block cv2 render thread
-            stay_awake: keep Android device awake
-            lock_screen_orientation: lock screen orientation, LOCK_SCREEN_ORIENTATION_*
+            device: Android device to coennect to. Colud be also specify by
+                serial string. In device is None the client try to connect
+                to the first available device in adb deamon.
+            max_size: Specify the maximum dimension of the video stream. This
+                dimensioin refer both to width and hight.
+            bitrate: Biirate of the video stream.
+            max_fps: Maximum FPS (Frame Per Second) of the video stream. If it
+                is set to 0 it means that there is not limit to FPS.
+                This feature is supported by android 10 or newer.
+            block_frame: If set to true, the on_frame callbacks will be only
+                apply on not empty frames. Otherwise try to apply on_frame
+                callbacks on every frame, but this could raise exceptions in
+                callbacks if they are not able to handle None value for frame.
+            stay_awake: keep Android device awake while the client-server
+                connection is alive.
+            lock_screen_orientation: lock screen in a particular orientation.
+                The available screen orientation are specify in const.py
+                in variables LOCK_SCREEN_ORIENTATION*
         """
 
         if device is None:
@@ -86,9 +90,8 @@ class Client:
 
     def __init_server_connection(self) -> None:
         """
-        Connect to android server, there will be two sockets, video and control
-        socket. This method will set: video_socket, control_socket, resolution
-        variables
+        Connect to android server, there will be two sockets: video and control
+        socket. This method will also set resolution property.
         """
         for _ in range(30):
             try:
@@ -101,7 +104,7 @@ class Client:
                 pass
         else:
             raise ConnectionError(
-                "Failed to connect scrcpy-server after 3 seconds"
+                "Failed to connect to scrcpy-server after 3 seconds."
             )
 
         dummy_byte = self.__video_socket.recv(1)
@@ -123,7 +126,10 @@ class Client:
 
     def __deploy_server(self) -> None:
         """
-        Deploy server to android device
+        Deploy server to android device.
+        Push the scrcpy-server.jar into the Android device using
+        the adb.push(...). Then a basic connection between client and server
+        is established.
         """
         cmd = [
             "CLASSPATH=/data/local/tmp/scrcpy-server.jar",
@@ -135,7 +141,7 @@ class Client:
             f"{self.max_size}",  # Max screen width (long side)
             f"{self.bitrate}",  # Bitrate of video
             f"{self.max_fps}",  # Max frame per second
-            f"{self.lock_screen_orientation}",  # Lock screen orientation: LOCK_SCREEN_ORIENTATION
+            f"{self.lock_screen_orientation}",  # Lock screen orientation
             "true",  # Tunnel forward
             "-",  # Crop screen
             "false",  # Send frame rate to client
@@ -152,10 +158,15 @@ class Client:
 
     def start(self, threaded: bool = False) -> None:
         """
-        Start listening video stream
+        Start the client-server connection.
+        In order to avoid unpredictable behaviors, this method must be called
+        after the on_init and on_frame callback are specify.
 
         Args:
-            threaded: Run stream loop in a different thread to avoid blocking
+            threaded: If set to True the stream loop willl run in a separated
+                thread. This mean that the code after client.strart() will be
+                run. Otherwise the client.start() method starts a endless loop
+                and the code after this method will never run.
         """
         assert self.alive is False
 
@@ -172,6 +183,7 @@ class Client:
 
     def stop(self) -> None:
         """
+        Close the various socket connection.
         Stop listening (both threaded and blocked)
         """
         self.alive = False
@@ -184,7 +196,10 @@ class Client:
 
     def __stream_loop(self) -> None:
         """
-        Core loop for video parsing
+        Core loop for video parsing.
+        While the connection is open (self.alive == True) recive raw h264 video
+        stream and decode it into frames. These frame are those passed to
+        on_frame callbacks.
         """
         codec = CodecContext.create("h264", "r")
         while self.alive:
@@ -206,9 +221,9 @@ class Client:
                 if self.alive:
                     raise e
 
-    def on_init(self, func: Callable[[ClientBase], None]) -> None:
+    def on_init(self, func: Callable[[Any], None]) -> None:
         """
-        Add funtion to on-init listeners.
+        Add funtion to on_init listeners.
         Your function is run after client.start() is called.
 
         Args:
@@ -221,7 +236,7 @@ class Client:
         self.listeners[EVENT_INIT].append(func)
         return self.listeners[EVENT_INIT]
 
-    def on_frame(self, func: Callable[[ClientBase, Frame], None]):
+    def on_frame(self, func: Callable[[Any, Frame], None]):
         """
         Add functoin to on-frame listeners.
         Your function will be run on every valid frame recived.
