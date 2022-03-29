@@ -13,7 +13,7 @@ import numpy.typing as npt
 from adbutils import AdbDevice, AdbError, Network, _AdbStreamConnection, adb
 from av.codec import CodecContext
 
-from .const import EVENT_FRAME, EVENT_INIT, LOCK_SCREEN_ORIENTATION_UNLOCKED
+from .const import EVENT_FRAME, EVENT_INIT, EVENT_CHANGE, LOCK_SCREEN_ORIENTATION_UNLOCKED
 from .control import ControlSender
 
 Frame = npt.NDArray[np.int8]
@@ -33,6 +33,7 @@ class Client:
         block_frame: bool = False,
         stay_awake: bool = False,
         lock_screen_orientation: int = LOCK_SCREEN_ORIENTATION_UNLOCKED,
+        change_treshold: int = 100,
     ):
         """
         Create a scrcpy client.
@@ -57,6 +58,12 @@ class Client:
             lock_screen_orientation: lock screen in a particular orientation.
                 The available screen orientation are specify in const.py
                 in variables LOCK_SCREEN_ORIENTATION*
+            change_treshold: Two consecutive frames are considered different
+                if the mean of the pixelwise difference is greater than 
+                change_treshold. If that is the case the on_change callbacks 
+                are run on the new frame. This theshold may vary from case to 
+                case, so it up to you to find the best value for your 
+                circumstance.
         """
 
         if device is None:
@@ -65,7 +72,8 @@ class Client:
             device = adb.device(serial=device)
 
         self.device = device
-        self.listeners = dict(frame=[], init=[])
+        self.listeners = dict(frame=[], init=[], change=[])
+        self.change_threshold = change_treshold
 
         # User accessible
         self.last_frame: Optional[np.ndarray] = None
@@ -249,3 +257,18 @@ class Client:
         """
         self.listeners[EVENT_FRAME].append(func)
         return self.listeners[EVENT_FRAME]
+
+    def on_change(self, func: Callable[[Any, Frame], None]):
+        """
+        Add functoin to on-frame listeners.
+        Your function when the pixel vaule of the frame are different from the 
+        previous one.
+
+        Args:
+            func: callback to be called on every screen change.
+
+        Returns:
+            The list of on-frame callbacks.
+        """
+        self.listeners[EVENT_CHANGE].append(func)
+        return self.listeners[EVENT_CHANGE]
