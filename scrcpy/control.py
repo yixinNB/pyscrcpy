@@ -60,11 +60,7 @@ class ControlSender:
 
     @inject(const.TYPE_INJECT_TOUCH_EVENT)
     def touch(
-        self,
-        x: int,
-        y: int,
-        action: int = const.ACTION_DOWN,
-        touch_id: int = -1,
+        self, x: int, y: int, action: int = const.ACTION_DOWN, touch_id: int = -1
     ) -> bytes:
         """
         Touch screen
@@ -73,8 +69,7 @@ class ControlSender:
             x: horizontal position
             y: vertical position
             action: ACTION_DOWN | ACTION_UP | ACTION_MOVE
-            touch_id: Default using virtual id -1, you can specify it to
-                emulate multi finger touch
+            touch_id: Default using virtual id -1, you can specify it to emulate multi finger touch
         """
         x, y = max(x, 0), max(y, 0)
         return struct.pack(
@@ -147,8 +142,7 @@ class ControlSender:
         """
         Get clipboard
         """
-        # Since this function need socket response,
-        # we can't auto inject it any more
+        # Since this function need socket response, we can't auto inject it any more
         s: socket.socket = self.parent.control_socket
 
         with self.parent.control_socket_lock:

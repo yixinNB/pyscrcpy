@@ -6,18 +6,28 @@ authors = ["lengyue <lengyue@lengyue.me>", "S1M0N38 <bertolottosimone@gmail.com>
 readme = "README.md"
 repository = "https://github.com/S1M0N38/scrcpy"
 license = "MIT"
+packages = [
+    { include = "scrcpy" },
+]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.10"
-av = "^8.0.3"
-adbutils = "^0.11.0"
-numpy = "^1.21.4"
+python = ">=3.7"
+av = "^9.0.0"
+opencv-python = "^4.5.0"
+adbutils = "^1.0.8"
 
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.2.5"
-[tool.black]
-line-length = 79
+flake8 = "^4.0.1"
+isort = "*"
+black = "^22.3.0"
+pytest = "^7.1.2"
+pytest-cov = "^3.0.0"
+Sphinx = "^4.1.2"
+myst-parser = "^0.17.2"
+
+[tool.isort]
+profile = "black"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
