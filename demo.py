@@ -1,11 +1,8 @@
-import time
-
 import cv2 as cv
-from scrcpy import Client
+from pyscrcpy import Client
 
 
 def on_frame(client, frame):
-    # print(dir(client.control.text))
     client.control.text("123")
     cv.imshow('Video', frame)
     cv.waitKey(1)

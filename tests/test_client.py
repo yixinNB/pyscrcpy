@@ -1,4 +1,4 @@
-from scrcpy import Client
+from pyscrcpy import Client
 import time
 
 def make_on_frame():

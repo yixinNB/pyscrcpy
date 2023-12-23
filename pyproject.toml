@@ -1,19 +1,19 @@
 [tool.poetry]
-name = "scrcpy"
-version = "0.0.4"
-description = "A python client for scrcpy, i.e. see & control your android device over adb."
-authors = ["lengyue <lengyue@lengyue.me>", "S1M0N38 <bertolottosimone@gmail.com>"]
+name = "pyscrcpy"
+version = "1.0.0"
+description = "adb and scrcpy, Android screen monitor and control. Compatible with latest python"
+authors = ["yixinNB <58894205+yixinNB@users.noreply.github.com>","lengyue <lengyue@lengyue.me>", "S1M0N38 <bertolottosimone@gmail.com>"]
 readme = "README.md"
-repository = "https://github.com/S1M0N38/scrcpy"
+repository = "https://github.com/yixinNB/pyscrcpy"
 license = "MIT"
 packages = [
-    { include = "scrcpy" },
+    { include = "pyscrcpy" },
 ]
 
 [tool.poetry.dependencies]
 python = ">=3.7"
-av = "^9.0.0"
-opencv-python = "^4.5.0"
+av = ">=9.0.0,<11.0.0"
+opencv-python = ">=4.5.0"
 adbutils = "^1.0.8"
 
 
