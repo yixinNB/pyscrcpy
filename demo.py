@@ -11,9 +11,7 @@ def on_frame(client, frame):
     cv.waitKey(1)
 
 
-
-
 if __name__ == '__main__':
-    client = Client(block_frame=True, stay_awake=True, max_fps=1)
+    client = Client(max_fps=1, max_size=900)
     client.on_frame(on_frame)
     client.start()

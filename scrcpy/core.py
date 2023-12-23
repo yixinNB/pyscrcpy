@@ -12,9 +12,9 @@ import numpy as np
 import numpy.typing as npt
 from adbutils import AdbConnection, AdbDevice, AdbError, Network, adb
 from av.codec import CodecContext # type: ignore
-from av.error import InvalidDataError
+from av.error import InvalidDataError # type: ignore
 
-from .const import EVENT_DISCONNECT, EVENT_FRAME, EVENT_INIT, EVENT_CHANGE, LOCK_SCREEN_ORIENTATION_UNLOCKED
+from .const import EVENT_DISCONNECT, EVENT_FRAME, EVENT_INIT, LOCK_SCREEN_ORIENTATION_UNLOCKED
 from .control import ControlSender
 
 Frame = npt.NDArray[np.int8]
@@ -26,15 +26,14 @@ JAR = HERE / f"scrcpy-server.jar"
 
 class Client:
     def __init__(
-        self,
-        device: Optional[Union[AdbDevice, str]] = None,
-        max_size: int = 0,
-        bitrate: int = 8000000,
-        max_fps: int = 0,
-        block_frame: bool = False,
-        stay_awake: bool = False,
-        lock_screen_orientation: int = LOCK_SCREEN_ORIENTATION_UNLOCKED,
-        change_treshold: int = 100,
+            self,
+            device: Optional[Union[AdbDevice, str]] = None,
+            max_size: int = 0,
+            bitrate: int = 8000000,
+            max_fps: int = 0,
+            block_frame: bool = True,
+            stay_awake: bool = True,
+            lock_screen_orientation: int = LOCK_SCREEN_ORIENTATION_UNLOCKED,
     ):
         """
         [ok]Create a scrcpy client. The client won't be started until you call .start()
@@ -44,7 +43,7 @@ class Client:
                 serial string. If device is None the client try to connect
                 to the first available device in adb deamon.
             max_size: Specify the maximum dimension of the video stream. This
-                dimensioin refer both to width and hight.[等效于max_width]
+                dimensioin refer both to width and hight.0: no limit[已校验, max size of width or height]
             bitrate: bitrate
             max_fps: Maximum FPS (Frame Per Second) of the video stream. If it
                 is set to 0 it means that there is not limit to FPS.
@@ -60,12 +59,6 @@ class Client:
             lock_screen_orientation: lock screen in a particular orientation.
                 The available screen orientation are specify in const.py
                 in variables LOCK_SCREEN_ORIENTATION*
-            change_treshold: Two consecutive frames are considered different
-                if the mean of the pixelwise difference is greater than 
-                change_treshold. If that is the case the on_change callbacks 
-                are run on the new frame. This theshold may vary from case to 
-                case, so it up to you to find the best value for your 
-                circumstance.
         """
         # Params挪到后面去
         self.max_size = max_size
@@ -84,8 +77,7 @@ class Client:
             device = adb.device(serial=device)
 
         self.device = device
-        self.listeners = dict(frame=[], init=[], change=[])
-        self.change_threshold = change_treshold # 见上方注释
+        self.listeners = dict(frame=[], init=[], disconnect=[])
 
         # User accessible
         self.last_frame: Optional[np.ndarray] = None
@@ -105,7 +97,7 @@ class Client:
         Connect to android server, there will be two sockets: video and control socket.
          This method will also set resolution property.
         """
-        for _ in range(30): # 超时 写死
+        for _ in range(30):  # 超时 写死
             try:
                 self.__video_socket = self.device.create_connection(
                     Network.LOCAL_ABSTRACT, "scrcpy"
@@ -184,7 +176,7 @@ class Client:
         for func in self.listeners[EVENT_INIT]:
             func(self)
 
-        if threaded: # 不阻塞当前thread
+        if threaded:  # 不阻塞当前thread
             threading.Thread(target=self.__stream_loop).start()
         else:
             self.__stream_loop()
@@ -195,12 +187,18 @@ class Client:
         Stop listening (both threaded and blocked)
         """
         self.alive = False
-        if self.__server_stream is not None:
+        try:
             self.__server_stream.close()
-        if self.control_socket is not None:
+        except Exception:
+            pass
+        try:
             self.control_socket.close()
-        if self.__video_socket is not None:
+        except Exception:
+            pass
+        try:
             self.__video_socket.close()
+        except Exception:
+            pass
 
     def __del__(self):
         self.stop()
@@ -219,16 +217,16 @@ class Client:
                 if raw == b"":
                     raise ConnectionError("Video stream is disconnected")
                 for packet in codec.parse(raw):
-                    for frame in codec.decode(packet): # codec.decode(packet)包含多帧
+                    for frame in codec.decode(packet):  # codec.decode(packet)包含多帧
                         frame = frame.to_ndarray(format="bgr24")
                         # 不需要考虑是否翻转
                         self.last_frame = frame
                         self.resolution = (frame.shape[1], frame.shape[0])
-                        for func in self.listeners[EVENT_FRAME]: # 发送给用户自定义的函数
+                        for func in self.listeners[EVENT_FRAME]:  # 发送给用户自定义的函数
                             func(self, frame)
-            except (BlockingIOError, InvalidDataError):
+            except (BlockingIOError, InvalidDataError):  # empty frame
                 time.sleep(0.01)
-                if not self.block_frame: # init时允许空白帧
+                if not self.block_frame:  # init时允许空白帧
                     for func in self.listeners[EVENT_FRAME]:
                         func(self, None)
             except (ConnectionError, OSError) as e:  # Socket Closed
@@ -236,21 +234,6 @@ class Client:
                     # todo on_disconnect event
                     self.stop()
                     raise e
-
-    def on_change(self, func: Callable[[Any, Frame], None]):
-        """
-        ok 但是这个函数几乎没用, 并没用cv计算图像变化率
-        Add functoin to on-frame listeners.
-        Your function when the pixel vaule of the frame are different from the
-        previous one.
-
-        Args:
-            func: callback to be called on every screen change.
-
-        Returns:
-            The list of on-frame callbacks.
-        """
-        self.listeners[EVENT_CHANGE].append(func)
 
     def on_init(self, func: Callable[[Any], None]) -> None:
         """
