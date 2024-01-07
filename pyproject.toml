@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyscrcpy"
-version = "1.0.0"
+version = "1.0.1"
 description = "adb and scrcpy, Android screen monitor and control. Compatible with latest python"
 authors = ["yixinNB <58894205+yixinNB@users.noreply.github.com>","lengyue <lengyue@lengyue.me>", "S1M0N38 <bertolottosimone@gmail.com>"]
 readme = "README.md"

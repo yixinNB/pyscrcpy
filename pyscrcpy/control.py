@@ -2,7 +2,6 @@ import functools
 import socket
 import struct
 import time
-
 from . import const
 
 
@@ -30,11 +29,12 @@ def inject(control_type: int):
 
 class ControlSender:
     def __init__(self, parent):
-        self.parent = parent
+        self.parent = parent  # client object
+        self.adbutil_devices = parent.device
 
     @inject(const.TYPE_INJECT_KEYCODE)
     def keycode(
-        self, keycode: int, action: int = const.ACTION_DOWN, repeat: int = 0
+            self, keycode: int, action: int = const.ACTION_DOWN, repeat: int = 0
     ) -> bytes:
         """
         Send keycode to device
@@ -58,31 +58,31 @@ class ControlSender:
         buffer = text.encode("utf-8")
         return struct.pack(">i", len(buffer)) + buffer
 
-    @inject(const.TYPE_INJECT_TOUCH_EVENT)
-    def touch(
-        self, x: int, y: int, action: int = const.ACTION_DOWN, touch_id: int = -1
-    ) -> bytes:
-        """
-        Touch screen
-
-        Args:
-            x: horizontal position
-            y: vertical position
-            action: ACTION_DOWN | ACTION_UP | ACTION_MOVE
-            touch_id: Default using virtual id -1, you can specify it to emulate multi finger touch
-        """
-        x, y = max(x, 0), max(y, 0)
-        return struct.pack(
-            ">BqiiHHHi",
-            action,
-            touch_id,
-            int(x),
-            int(y),
-            int(self.parent.resolution[0]),
-            int(self.parent.resolution[1]),
-            0xFFFF,
-            1,
-        )
+    # @inject(const.TYPE_INJECT_TOUCH_EVENT)
+    # def touch(self, x: int, y: int, action: int = const.ACTION_DOWN, touch_id: int = -1) -> bytes:
+    #     """
+    #     Touch screen
+    #
+    #     Args:
+    #         x: horizontal position
+    #         y: vertical position
+    #         action: ACTION_DOWN | ACTION_UP | ACTION_MOVE
+    #         touch_id: Default using virtual id -1, you can specify it to emulate multi finger touch
+    #     """
+    #     x, y = max(x, 0), max(y, 0)
+    #     return struct.pack(
+    #         ">BqiiHHHi",
+    #         action,
+    #         touch_id,
+    #         int(x),
+    #         int(y),
+    #         int(self.parent.resolution[0]),
+    #         int(self.parent.resolution[1]),
+    #         0xFFFF,
+    #         1,
+    #     )
+    def touch(self, x, y):
+        self.adbutil_devices.shell(f"input tap {x} {y}")
 
     @inject(const.TYPE_INJECT_SCROLL_EVENT)
     def scroll(self, x: int, y: int, h: int, v: int) -> bytes:
@@ -178,7 +178,7 @@ class ControlSender:
 
     @inject(const.TYPE_SET_SCREEN_POWER_MODE)
     def set_screen_power_mode(
-        self, mode: int = const.POWER_MODE_NORMAL
+            self, mode: int = const.POWER_MODE_NORMAL
     ) -> bytes:
         """
         Set screen power mode
@@ -196,13 +196,13 @@ class ControlSender:
         return b""
 
     def swipe(
-        self,
-        start_x: int,
-        start_y: int,
-        end_x: int,
-        end_y: int,
-        move_step_length: int = 5,
-        move_steps_delay: float = 0.005,
+            self,
+            start_x: int,
+            start_y: int,
+            end_x: int,
+            end_y: int,
+            move_step_length: int = 5,
+            move_steps_delay: float = 0.005,
     ) -> None:
         """
         Swipe on screen
