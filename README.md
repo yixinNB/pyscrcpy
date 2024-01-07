@@ -1,8 +1,9 @@
 # Python Scrcpy Client
-![scrcpy-badge](https://img.shields.io/badge/scrcpy-v1.20-violet)
-Introduction to pyscrcpy: A Python Library for scrcpy
 
 # Introduction
+![scrcpy-badge](https://img.shields.io/badge/scrcpy-v1.20-violet)
+
+A Python Library for scrcpy  
 pyscrcpy is an innovative Python library designed to simplify and streamline the integration of scrcpy into your Python projects. Scrcpy, a versatile screen mirroring tool for Android devices, gains a new level of accessibility through the seamless capabilities provided by pyscrcpy.
 
 # Key Features
@@ -11,34 +12,24 @@ pyscrcpy is an innovative Python library designed to simplify and streamline the
 2. Enhanced Control: pyscrcpy empowers developers to exert precise control over Android devices from within their Python applications. Whether it's automating UI interactions, conducting tests, or creating custom applications, pyscrcpy provides a convenient interface for managing scrcpy commands.
 3. Customization Options: Tailor scrcpy behavior to suit your project's requirements using the customizable options provided by pyscrcpy. Fine-tune parameters such as display size, bit rate, and more, all while maintaining the simplicity of Python scripting.
 
-# Demo
+# Demo & Tutorial
 ```python
 import cv2 as cv
 from pyscrcpy import Client # import scrcpy client
 
 
 def on_frame(client, frame):
-    client.control.text("123")
+    client.control.touch(300,500)# emulate touch on(300,500)
     cv.imshow('Video', frame)
     cv.waitKey(1)
 
 
-if __name__ == '__main__':
+def demo1():
     client = Client(max_fps=1, max_size=900)
     client.on_frame(on_frame)
     client.start()
-```
-```python
-import cv2 as cv
-from pyscrcpy import Client
 
-
-def on_frame(client, frame):
-    cv.imshow('Video', frame)
-    cv.waitKey(1)
-
-
-if __name__ == '__main__':
+def demo2():
     client = Client(max_fps=20)
     client.start(threaded=True)  # create a new thread for scrcpy
     while 1:
