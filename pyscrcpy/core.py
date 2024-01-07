@@ -11,10 +11,13 @@ from typing import Any, Callable, Optional, Tuple, Union
 import numpy as np
 import numpy.typing as npt
 from adbutils import AdbConnection, AdbDevice, AdbError, Network, adb
-from av.codec import CodecContext # type: ignore
-from av.error import InvalidDataError # type: ignore
+from av.codec import CodecContext  # type: ignore
+from av.error import InvalidDataError  # type: ignore
+import cv2 as cv
+import cv2
+from loguru import logger
 
-from .const import EVENT_DISCONNECT, EVENT_FRAME, EVENT_INIT, LOCK_SCREEN_ORIENTATION_UNLOCKED
+from .const import EVENT_DISCONNECT, EVENT_FRAME, EVENT_INIT, LOCK_SCREEN_ORIENTATION_UNLOCKED, EVENT_ONCHANGE
 from .control import ControlSender
 
 Frame = npt.NDArray[np.int8]
@@ -34,6 +37,7 @@ class Client:
             block_frame: bool = True,
             stay_awake: bool = True,
             lock_screen_orientation: int = LOCK_SCREEN_ORIENTATION_UNLOCKED,
+            skip_same_frame=False
     ):
         """
         [ok]Create a scrcpy client. The client won't be started until you call .start()
@@ -67,6 +71,8 @@ class Client:
         self.block_frame = block_frame
         self.stay_awake = stay_awake
         self.lock_screen_orientation = lock_screen_orientation
+        self.skip_same_frame = skip_same_frame
+        self.min_frame_interval = 1 / max_fps
 
         if device is None:
             try:
@@ -77,7 +83,7 @@ class Client:
             device = adb.device(serial=device)
 
         self.device = device
-        self.listeners = dict(frame=[], init=[], disconnect=[])
+        self.listeners = dict(frame=[], init=[], disconnect=[], onchange=[])
 
         # User accessible
         self.last_frame: Optional[np.ndarray] = None
@@ -203,6 +209,29 @@ class Client:
     def __del__(self):
         self.stop()
 
+    def __calculate_diff(self, img1, img2):
+        if img1 is None:
+            return 1
+        gray1 = cv.cvtColor(img1, cv.COLOR_BGR2GRAY)
+        gray2 = cv.cvtColor(img2, cv.COLOR_BGR2GRAY)
+
+        # 计算两张灰度图像的差异
+        diff = cv2.absdiff(gray1, gray2)
+
+        # 设置阈值，忽略差异值较小的像素
+        threshold = 30
+        _, thresholded_diff = cv2.threshold(diff, threshold, 255, cv2.THRESH_BINARY)
+
+        # 计算差异像素的总数
+        total_diff_pixels = np.sum(thresholded_diff / 255)  # 除以255得到二值图像中白色像素的数量
+
+        # 计算图像的总像素数
+        total_pixels = gray1.size
+
+        # 计算变化率
+        change_rate = total_diff_pixels / total_pixels
+        return change_rate
+
     def __stream_loop(self) -> None:
         """
         Core loop for video parsing.
@@ -219,8 +248,17 @@ class Client:
                 for packet in codec.parse(raw):
                     for frame in codec.decode(packet):  # codec.decode(packet)包含多帧
                         frame = frame.to_ndarray(format="bgr24")
-                        # 不需要考虑是否翻转
-                        self.last_frame = frame
+
+                        if len(self.listeners[EVENT_ONCHANGE]) == 0 and not self.skip_same_frame:
+                            self.last_frame = frame
+                        elif self.__calculate_diff(self.last_frame, frame) > 0.1:
+                            logger.debug("different frame detected")
+                            self.last_frame = frame
+                            for func in self.listeners[EVENT_ONCHANGE]:
+                                func(self, frame)
+                        else:  # no_change and should skip this frame
+                            continue
+
                         self.resolution = (frame.shape[1], frame.shape[0])
                         for func in self.listeners[EVENT_FRAME]:  # 发送给用户自定义的函数
                             func(self, frame)
@@ -257,3 +295,6 @@ class Client:
             The list of on-frame callbacks.
         """
         self.listeners[EVENT_FRAME].append(func)
+
+    def on_change(self, func: Callable[[Any, Frame], None]):
+        self.listeners[EVENT_ONCHANGE].append(func)

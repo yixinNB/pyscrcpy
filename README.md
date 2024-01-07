@@ -14,7 +14,7 @@ pyscrcpy is an innovative Python library designed to simplify and streamline the
 # Demo
 ```python
 import cv2 as cv
-from pyscrcpy import Client
+from pyscrcpy import Client # import scrcpy client
 
 
 def on_frame(client, frame):
@@ -27,12 +27,29 @@ if __name__ == '__main__':
     client = Client(max_fps=1, max_size=900)
     client.on_frame(on_frame)
     client.start()
+```
+```python
+import cv2 as cv
+from pyscrcpy import Client
 
+
+def on_frame(client, frame):
+    cv.imshow('Video', frame)
+    cv.waitKey(1)
+
+
+if __name__ == '__main__':
+    client = Client(max_fps=20)
+    client.start(threaded=True)  # create a new thread for scrcpy
+    while 1:
+        if client.last_frame is None:
+            continue
+        on_frame(client, client.last_frame)
 ```
 
 ## Reference & Appreciation
-- Fork: [S1M0N38/scrcpy](https://github.com/S1M0N38/scrcpy)
+- Fork: [S1M0N38/scrcpy (don't support python3.11)](https://github.com/S1M0N38/scrcpy)
 - Fork: [py-scrcpy-client](https://github.com/leng-yue/py-scrcpy-client)
 - Core: [scrcpy](https://github.com/Genymobile/scrcpy)
-- Idea(many bugs): [py-android-viewer](https://github.com/razumeiko/py-android-viewer)
+- Idea: [py-android-viewer (many bugs)](https://github.com/razumeiko/py-android-viewer)
 - CI: [index.py](https://github.com/index-py/index.py)
